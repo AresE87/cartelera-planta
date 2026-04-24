@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Builds
+dist/
+build/
+out/
+.next/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Local db / data
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+uploads/
+media/
+
+# Docker volumes
+docker-data/
+
+# OS
+desktop.ini
+$RECYCLE.BIN/
+
+# Backups
+*.bak
+*.backup
+backups/
+
+# Certs
+*.pem
+*.key
+*.crt
+!Caddyfile.example
+
+# Temp
+tmp/
+.tmp/
+.cache/
