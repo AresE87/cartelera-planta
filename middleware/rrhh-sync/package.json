@@ -1,0 +1,14 @@
+{
+  "name": "cartelera-middleware-rrhh",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Middleware RRHH — expone beneficios, cumpleaños y avisos desde fuentes internas",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

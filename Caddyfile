@@ -1,0 +1,78 @@
+# -------------------------------------------------------------------
+# Cartelera Planta — Caddy reverse proxy config
+# -------------------------------------------------------------------
+#
+# En producción on-premise (sin TLS público):
+#   - Cambiar `:80 { ... }` por `carteleria.empresa.local { ... }`
+#   - Caddy auto-genera cert interno
+#
+# En prueba local:
+#   - Deja `:80` y accedé por http://localhost:8080
+# -------------------------------------------------------------------
+
+{
+  # Desactivar auto-HTTPS en entornos internos (Caddy intenta Let's Encrypt por defecto)
+  auto_https off
+}
+
+:80 {
+  encode gzip zstd
+
+  # --- API ---
+  handle /api/* {
+    reverse_proxy backend:3000
+  }
+
+  # --- WebSocket ---
+  handle /ws {
+    reverse_proxy backend:3000
+  }
+  handle /ws/* {
+    reverse_proxy backend:3000
+  }
+
+  # --- Media served directly from backend (has cache headers) ---
+  handle /media/* {
+    reverse_proxy backend:3000
+  }
+
+  # --- Display client (archivos estáticos) ---
+  handle /display* {
+    root * /srv
+    try_files {path} /display/index.html
+    file_server
+  }
+
+  # --- Admin dashboard (Nginx detrás) ---
+  handle /admin* {
+    reverse_proxy admin:80
+  }
+
+  # --- Redirect root to admin ---
+  handle / {
+    redir /admin/ 302
+  }
+
+  # --- Logs ---
+  log {
+    output stdout
+    format console
+    level INFO
+  }
+}
+
+# --- HTTPS variant (uncomment and adjust) ---
+# carteleria.empresa.local {
+#   tls internal
+#   encode gzip zstd
+#   handle /api/* { reverse_proxy backend:3000 }
+#   handle /ws    { reverse_proxy backend:3000 }
+#   handle /media/* { reverse_proxy backend:3000 }
+#   handle /display* {
+#     root * /srv
+#     try_files {path} /display/index.html
+#     file_server
+#   }
+#   handle /admin* { reverse_proxy admin:80 }
+#   handle / { redir /admin/ 302 }
+# }
