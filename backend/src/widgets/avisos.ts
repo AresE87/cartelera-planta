@@ -1,4 +1,5 @@
 import type { WidgetContext, WidgetPayload } from './engine';
+import { safeFetch } from '../util/safe-fetch';
 
 interface Aviso {
   id: string | number;
@@ -21,9 +22,9 @@ export async function buildAvisos(ctx: WidgetContext): Promise<WidgetPayload> {
   let items: Aviso[] = [];
   if (cfg.source === 'url' && (cfg.url || ctx.widget.data_source_url)) {
     const url = cfg.url || ctx.widget.data_source_url!;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const res = await safeFetch(url, { timeoutMs: 10_000 });
     if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
-    const json = await res.json() as unknown;
+    const json = res.json<unknown>();
     items = Array.isArray(json) ? json as Aviso[] : ((json as any)?.items ?? []);
   } else {
     items = cfg.items ?? [];

@@ -9,12 +9,21 @@ import schedules from './schedules';
 import widgets from './widgets';
 import alerts from './alerts';
 import player from './player';
+import { rateLimit } from '../util/rate-limit';
 
 const router: Router = Router();
 
 router.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'cartelera-backend', time: new Date().toISOString() });
 });
+
+const apiLimiter = rateLimit({ capacity: 240, refillPerSec: 4 });
+const loginLimiter = rateLimit({ capacity: 5, refillPerSec: 1 / 12 });
+const pairLimiter = rateLimit({ capacity: 10, refillPerSec: 1 / 6 });
+
+router.use(apiLimiter);
+router.use('/auth/login', loginLimiter);
+router.use('/player/pair', pairLimiter);
 
 router.use('/auth', auth);
 router.use('/users', users);

@@ -1,4 +1,5 @@
 import type { WidgetContext, WidgetPayload } from './engine';
+import { safeFetch } from '../util/safe-fetch';
 
 /**
  * Widget "Clima" — usa Open-Meteo (gratis, sin key) o un endpoint custom.
@@ -16,14 +17,13 @@ export async function buildClima(ctx: WidgetContext): Promise<WidgetPayload> {
   };
 
   if (cfg.provider === 'custom' && cfg.customUrl) {
-    const res = await fetch(cfg.customUrl, { signal: AbortSignal.timeout(10000) });
+    const res = await safeFetch(cfg.customUrl, { timeoutMs: 10_000 });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
     return {
       type: 'clima',
       generatedAt: new Date().toISOString(),
       ttlSeconds: ctx.widget.refresh_seconds,
-      data,
+      data: res.json(),
     };
   }
 
@@ -34,9 +34,9 @@ export async function buildClima(ctx: WidgetContext): Promise<WidgetPayload> {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&timezone=auto`;
 
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const res = await safeFetch(url, { timeoutMs: 10_000, allowPrivate: false });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json() as any;
+    const json = res.json<{ current: unknown }>();
     return {
       type: 'clima',
       generatedAt: new Date().toISOString(),

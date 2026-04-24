@@ -13,6 +13,5 @@ export function signDisplayToken(displayId: number): string {
 }
 
 export function verifyToken(token: string): JwtPayload {
-  const decoded = jwt.verify(token, config.auth.jwtSecret) as JwtPayload;
-  return decoded;
+  return jwt.verify(token, config.auth.jwtSecret) as unknown as JwtPayload;
 }

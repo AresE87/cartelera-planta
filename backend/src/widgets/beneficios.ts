@@ -1,4 +1,5 @@
 import type { WidgetContext, WidgetPayload } from './engine';
+import { safeFetch } from '../util/safe-fetch';
 
 interface Beneficio {
   id: string | number;
@@ -33,15 +34,14 @@ export async function buildBeneficios(ctx: WidgetContext): Promise<WidgetPayload
 
   if (cfg.source === 'url' && (cfg.url || ctx.widget.data_source_url)) {
     const url = cfg.url || ctx.widget.data_source_url!;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const res = await safeFetch(url, { timeoutMs: 10_000 });
     if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
-    const json = await res.json() as unknown;
+    const json = res.json<unknown>();
     items = Array.isArray(json) ? json as Beneficio[] : ((json as any)?.items ?? []);
   } else {
     items = cfg.items ?? [];
   }
 
-  // Filters
   if (cfg.filtros?.onlyActive) {
     const now = Date.now();
     items = items.filter(b => {

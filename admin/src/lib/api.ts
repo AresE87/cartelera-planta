@@ -77,8 +77,10 @@ export const api = {
   // layouts
   listLayouts: () => request<{ layouts: Layout[] }>('/api/layouts'),
   getLayout:   (id: number) => request<{ layout: Layout }>(`/api/layouts/${id}`),
-  createLayout: (data: Partial<Layout>) => request<{ id: number }>('/api/layouts', { method: 'POST', body: JSON.stringify(data) }),
-  updateLayout: (id: number, data: Partial<Layout>) => request<{ ok: boolean }>(`/api/layouts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  createLayout: (data: Partial<Omit<Layout, 'published'>> & { published?: boolean | number }) =>
+    request<{ id: number }>('/api/layouts', { method: 'POST', body: JSON.stringify(data) }),
+  updateLayout: (id: number, data: Partial<Omit<Layout, 'published'>> & { published?: boolean | number }) =>
+    request<{ ok: boolean }>(`/api/layouts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteLayout: (id: number) => request<{ ok: boolean }>(`/api/layouts/${id}`, { method: 'DELETE' }),
   duplicateLayout: (id: number) => request<{ id: number }>(`/api/layouts/${id}/duplicate`, { method: 'POST' }),
 
@@ -91,8 +93,10 @@ export const api = {
     const qs = q.toString();
     return request<{ schedules: Schedule[] }>(`/api/schedules${qs ? '?' + qs : ''}`);
   },
-  createSchedule: (data: Partial<Schedule>) => request<{ id: number }>('/api/schedules', { method: 'POST', body: JSON.stringify(data) }),
-  updateSchedule: (id: number, data: Partial<Schedule>) => request<{ ok: boolean }>(`/api/schedules/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  createSchedule: (data: Partial<Omit<Schedule, 'active'>> & { active?: boolean | number }) =>
+    request<{ id: number }>('/api/schedules', { method: 'POST', body: JSON.stringify(data) }),
+  updateSchedule: (id: number, data: Partial<Omit<Schedule, 'active'>> & { active?: boolean | number }) =>
+    request<{ ok: boolean }>(`/api/schedules/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteSchedule: (id: number) => request<{ ok: boolean }>(`/api/schedules/${id}`, { method: 'DELETE' }),
 
   // widgets

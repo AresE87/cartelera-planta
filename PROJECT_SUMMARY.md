@@ -20,16 +20,17 @@ Implementación completa del plan descrito en [plan.md](plan.md).
 
 | Métrica | Valor |
 |---------|-------|
-| Archivos totales | 122 |
-| Líneas de código (aprox) | 10.000+ |
+| Archivos totales | 130+ |
+| Líneas de código (aprox) | 11.000+ |
 | Servicios Docker | 6 (backend, admin, caddy, 3 middleware) |
 | Endpoints REST | 50+ |
 | Eventos WebSocket | 6 |
 | Widgets built-in | 12 (beneficios, cumpleaños, avisos, KPIs, alertas, clima, reloj, RSS, texto, imagen URL, YouTube, iframe) |
 | Roles de usuario | 6 (admin, comunicaciones, rrhh, producción, seguridad, operator) |
-| Páginas admin UI | 11 |
+| Páginas admin UI | 13 |
 | Documentos | 10 (en `docs/`) |
 | Scripts ops | 8 (install, backup, restore, player-setup, health, smoke, validate, seed) |
+| Tests automatizados | 60 (auth, widgets, scheduler, pairing, SSRF, rate-limit, JWT, passwords) |
 | CI jobs | 7 |
 
 ## Tecnologías
@@ -68,6 +69,16 @@ sudo reboot
 - Video streaming (HLS/RTSP)
 - Touchscreen / interactividad
 - Métricas Prometheus (listed en docs/operations.md como extensión)
+
+## Hardening (v1.1)
+
+- SSRF guard en todo fetch externo de widgets ([backend/src/util/safe-fetch.ts](backend/src/util/safe-fetch.ts))
+- Rate limiting de login, pairing y API en general ([backend/src/util/rate-limit.ts](backend/src/util/rate-limit.ts))
+- Security headers (helmet-style) + body limit 1MB
+- WS bindea display token a `displays.api_token`; admin subscribe whitelisted
+- Pairing codes con CSPRNG (`crypto.randomInt`)
+- `api_token` ya no se filtra por API
+- `NODE_ENV=production` bloquea arranque con JWT_SECRET débil
 
 Ver [docs/changelog.md](docs/changelog.md) para el detalle.
 

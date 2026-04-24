@@ -3,6 +3,42 @@
 Todos los cambios importantes del proyecto se documentan acá.
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.0] — 2026-04-24
+
+### Security
+- **SSRF guard** (`backend/src/util/safe-fetch.ts`): bloquea metadata IPs (169.254.0.0/16), 0.x, broadcast, multicast, e IPv6 reservadas. Esquemas no-HTTP rechazados en write-time. Redirects re-validados en cada hop. Tamaño de respuesta limitado, timeout configurable.
+- **Validación URL en write-time** para widgets `iframe`, `imagen_url`, `rss`, `clima` (custom), `beneficios|cumpleanos|avisos|kpis` (`source: 'url'`) y `data_source_url`. Rechaza `file:`, `javascript:`, `data:`, credenciales embebidas.
+- **Rate limiting** in-memory token bucket (`backend/src/util/rate-limit.ts`):
+  - `/api/auth/login`: 5 intentos burst, refill 1 cada 12s (≈ 5/min).
+  - `/api/player/pair`: 10 intentos burst, refill 1 cada 6s.
+  - `/api/*` general: 240 burst, 4 RPS sostenido.
+  - Header `Retry-After` incluido en respuestas 429.
+- **Security headers** (`backend/src/util/security-headers.ts`): `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy`, `COOP/CORP`, HSTS condicional.
+- **Body limit**: bajado de 10MB a 1MB para JSON/urlencoded (uploads de media siguen en 50MB vía multer).
+- **WebSocket hardening**:
+  - Display tokens ahora se bindean al `displays.api_token`. Si admin regenera el pairing, la conexión vieja queda invalidada (close 4003).
+  - Admin WS: `subscribe` solo acepta canales `all|admin|zone:N|display:N`. Mensajes >4 KB se descartan.
+- **Pairing codes con CSPRNG** (`crypto.randomInt`) en lugar de `Math.random`.
+- **No leak de `api_token`** en `GET /api/displays` y `GET /api/displays/:id`.
+- **Production safety check**: el backend se rehúsa a arrancar en `NODE_ENV=production` si `JWT_SECRET` es el default o tiene < 32 chars.
+- `x-powered-by` deshabilitado.
+
+### Tests
+- Suite de tests reescrita: 60 tests en 11 suites, ejecutándose en procesos aislados.
+- `tests/safe-fetch.test.ts` — 21 tests cubriendo validación de URL, clasificación de IPs, comportamiento HTTP (redirects, tamaño, timeout, cloud metadata).
+- `tests/rate-limit.test.ts` — 3 tests (capacidad, refill, keyFn custom).
+- `tests/auth.test.ts` — 8 tests (login, role guard, brute-force).
+- `tests/widgets.test.ts` — 12 tests (CRUD, SSRF write-time, rate-limit por payload size).
+- `tests/scheduler.test.ts` — 7 tests (DOW, time window, prioridad, fallbacks).
+- `tests/display-pair.test.ts` — 6 tests (pairing flow, regeneración, no-leak de token).
+- `tests/unit.test.ts` — 4 tests (passwords, JWT).
+- Test runner ahora usa `--test-isolation=process` para aislar singletons.
+
+### Fixed
+- `verifyToken` cast inseguro entre `string | jwt.JwtPayload` (typecheck error pre-existente).
+- `schedules.writeSchema` no podía hacer `.partial()` por `.refine()` (typecheck error pre-existente). Refactorizado a validación manual `requireTarget`.
+- `admin/api.ts`: `updateLayout` y `updateSchedule` ahora aceptan `boolean | number` para `published` y `active`.
+
 ## [1.0.0] — 2026-04-24
 
 Primera release. Todo el MVP alineado con el plan del proyecto.

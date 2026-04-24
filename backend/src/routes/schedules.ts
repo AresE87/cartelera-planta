@@ -21,7 +21,13 @@ const writeSchema = z.object({
   end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().nullable(),
   priority: z.number().int().min(0).max(100).optional(),
   active: z.boolean().optional(),
-}).refine(d => d.zone_id || d.display_id, { message: 'Must target zone_id or display_id' });
+});
+
+function requireTarget(d: { zone_id?: number | null; display_id?: number | null }): void {
+  if (!d.zone_id && !d.display_id) {
+    throw BadRequest('Must target zone_id or display_id');
+  }
+}
 
 router.use(authRequired);
 
@@ -56,6 +62,7 @@ router.get('/', (req, res, next) => {
 router.post('/', roleRequired('admin', 'comunicaciones', 'rrhh', 'produccion', 'seguridad'), (req, res, next) => {
   try {
     const data = parseBody(writeSchema, req.body);
+    requireTarget(data);
     const db = getDb();
 
     const layout = db.prepare('SELECT id FROM layouts WHERE id = ?').get(data.layout_id);

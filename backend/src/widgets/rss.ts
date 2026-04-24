@@ -1,4 +1,5 @@
 import type { WidgetContext, WidgetPayload } from './engine';
+import { safeFetch } from '../util/safe-fetch';
 
 /**
  * Widget RSS — parser simple de RSS 2.0 / Atom.
@@ -19,11 +20,10 @@ export async function buildRss(ctx: WidgetContext): Promise<WidgetPayload> {
     };
   }
 
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  const res = await safeFetch(url, { timeoutMs: 15_000, maxBytes: 2 * 1024 * 1024 });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const xml = await res.text();
 
-  const items = parseRss(xml, cfg.limit ?? 10);
+  const items = parseRss(res.text, cfg.limit ?? 10);
   return {
     type: 'rss',
     generatedAt: new Date().toISOString(),

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { nanoid } from 'nanoid';
+import { randomInt } from 'crypto';
 import { getDb } from '../db';
 import { authRequired, roleRequired } from '../auth/middleware';
 import { parseBody, nameSchema, idParamSchema } from '../util/validators';
@@ -21,16 +21,21 @@ const writeSchema = z.object({
 
 router.use(authRequired);
 
+function stripDisplaySecrets(row: any): any {
+  if (row && typeof row === 'object') delete row.api_token;
+  return row;
+}
+
 router.get('/', (_req, res, next) => {
   try {
     const db = getDb();
-    const displays = db.prepare(`
+    const displays = (db.prepare(`
       SELECT d.*, z.name AS zone_name, l.name AS current_layout_name
       FROM displays d
       LEFT JOIN zones   z ON z.id = d.zone_id
       LEFT JOIN layouts l ON l.id = d.current_layout_id
       ORDER BY d.name
-    `).all();
+    `).all() as any[]).map(stripDisplaySecrets);
     res.json({ displays });
   } catch (err) { next(err); }
 });
@@ -60,13 +65,13 @@ router.get('/:id', (req, res, next) => {
   try {
     const { id } = parseBody(idParamSchema, req.params);
     const db = getDb();
-    const display = db.prepare(`
+    const display = stripDisplaySecrets(db.prepare(`
       SELECT d.*, z.name AS zone_name, l.name AS current_layout_name
       FROM displays d
       LEFT JOIN zones   z ON z.id = d.zone_id
       LEFT JOIN layouts l ON l.id = d.current_layout_id
       WHERE d.id = ?
-    `).get(id);
+    `).get(id));
     if (!display) throw NotFound();
     const heartbeats = db.prepare('SELECT * FROM heartbeats WHERE display_id = ? ORDER BY created_at DESC LIMIT 20').all(id);
     res.json({ display, heartbeats });
@@ -170,10 +175,10 @@ router.post('/pair', (req, res, next) => {
 export { pairSchema, writeSchema as displayWriteSchema };
 
 function genPairingCode(): string {
-  // 6 chars, easy to read on a TV (no 0/O, I/L ambiguous)
+  // 6 chars, easy to read on a TV (no 0/O, I/L ambiguous), CSPRNG-backed
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let out = '';
-  for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) out += chars[randomInt(chars.length)];
   return out;
 }
 

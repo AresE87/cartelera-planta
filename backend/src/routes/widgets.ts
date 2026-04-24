@@ -3,10 +3,12 @@ import { z } from 'zod';
 import { getDb } from '../db';
 import { authRequired, roleRequired } from '../auth/middleware';
 import { parseBody, nameSchema, idParamSchema } from '../util/validators';
-import { NotFound } from '../util/errors';
+import { BadRequest, NotFound } from '../util/errors';
 import { logAudit } from '../util/audit';
 import { getWidgetData } from '../widgets';
 import { broadcast } from '../ws/server';
+import { assertHttpUrl, SafeFetchError } from '../util/safe-fetch';
+import type { WidgetType } from '../types';
 
 const router: Router = Router();
 
@@ -20,9 +22,57 @@ const writeSchema = z.object({
   name: nameSchema,
   description: z.string().max(1000).optional().nullable(),
   config: z.record(z.unknown()),
-  data_source_url: z.string().url().optional().nullable(),
+  data_source_url: z.string().max(2048).optional().nullable(),
   refresh_seconds: z.number().int().min(10).max(86400).optional(),
 });
+
+function validateUrlField(value: unknown, label: string): void {
+  if (value === undefined || value === null || value === '') return;
+  if (typeof value !== 'string') {
+    throw BadRequest(`${label} must be a string URL`);
+  }
+  try {
+    assertHttpUrl(value);
+  } catch (err) {
+    if (err instanceof SafeFetchError) {
+      throw BadRequest(`${label}: ${err.message}`);
+    }
+    throw err;
+  }
+}
+
+function validateWidgetConfig(type: WidgetType, config: Record<string, unknown> | undefined, dataSourceUrl: string | null | undefined): void {
+  if (dataSourceUrl) validateUrlField(dataSourceUrl, 'data_source_url');
+  if (!config) return;
+
+  switch (type) {
+    case 'iframe':
+      validateUrlField(config.url, 'config.url');
+      break;
+    case 'imagen_url':
+      validateUrlField(config.url, 'config.url');
+      break;
+    case 'clima':
+      if (config.provider === 'custom') validateUrlField(config.customUrl, 'config.customUrl');
+      break;
+    case 'rss':
+    case 'beneficios':
+    case 'cumpleanos':
+    case 'avisos':
+    case 'kpis':
+      if (config.source === 'url') validateUrlField(config.url, 'config.url');
+      break;
+    case 'youtube':
+      if (config.url !== undefined && config.url !== null && config.url !== '') {
+        // Accept arbitrary YouTube share URLs (extracted to videoId server-side)
+        if (typeof config.url !== 'string') throw BadRequest('config.url must be a string');
+      }
+      break;
+    default:
+      // No URL fields expected
+      break;
+  }
+}
 
 router.use(authRequired);
 
@@ -40,6 +90,7 @@ router.get('/', (_req, res, next) => {
 router.post('/', roleRequired('admin', 'comunicaciones', 'rrhh', 'produccion', 'seguridad'), (req, res, next) => {
   try {
     const data = parseBody(writeSchema, req.body);
+    validateWidgetConfig(data.type, data.config, data.data_source_url);
     const db = getDb();
     const info = db.prepare(`
       INSERT INTO widgets (type, name, description, config, data_source_url, refresh_seconds, created_by)
@@ -75,8 +126,20 @@ router.patch('/:id', roleRequired('admin', 'comunicaciones', 'rrhh', 'produccion
     const { id } = parseBody(idParamSchema, req.params);
     const data = parseBody(writeSchema.partial(), req.body);
     const db = getDb();
-    const widget = db.prepare('SELECT id FROM widgets WHERE id = ?').get(id);
-    if (!widget) throw NotFound();
+    const existing = db.prepare('SELECT type, config, data_source_url FROM widgets WHERE id = ?').get(id) as
+      | { type: WidgetType; config: string; data_source_url: string | null }
+      | undefined;
+    if (!existing) throw NotFound();
+
+    const effectiveType = (data.type ?? existing.type) as WidgetType;
+    let effectiveConfig: Record<string, unknown> | undefined;
+    if (data.config !== undefined) {
+      effectiveConfig = data.config;
+    } else {
+      try { effectiveConfig = JSON.parse(existing.config); } catch { effectiveConfig = {}; }
+    }
+    const effectiveDataUrl = data.data_source_url !== undefined ? data.data_source_url : existing.data_source_url;
+    validateWidgetConfig(effectiveType, effectiveConfig, effectiveDataUrl);
 
     const updates: string[] = [];
     const values: unknown[] = [];
@@ -87,7 +150,6 @@ router.patch('/:id', roleRequired('admin', 'comunicaciones', 'rrhh', 'produccion
     if (data.refresh_seconds !== undefined) { updates.push('refresh_seconds = ?'); values.push(data.refresh_seconds); }
     if (data.type !== undefined) { updates.push('type = ?'); values.push(data.type); }
     if (updates.length === 0) return res.json({ ok: true });
-    // Reset cache on any change
     updates.push('cached_payload = NULL');
     updates.push('cached_at = NULL');
     updates.push("updated_at = datetime('now')");
