@@ -4,6 +4,9 @@
 
 Este repositorio contiene tanto el **plan de proyecto** ([`plan.md`](plan.md)) como la **implementación completa** de la plataforma.
 
+**Estado:** ✅ v1.0 — todas las fases del plan implementadas.
+Ver [`PROJECT_SUMMARY.md`](PROJECT_SUMMARY.md) para el mapeo plan ↔ código.
+
 ---
 
 ## ¿Qué resuelve?
