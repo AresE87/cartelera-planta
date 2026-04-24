@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — typecheck + build + smoke tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Run smoke tests
+        run: npm test
+        env:
+          JWT_SECRET: test-secret-test-secret-test-secret-test
+          DB_PATH: ':memory:'
+
+  admin:
+    name: Admin — typecheck + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: admin/package-lock.json
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+
+  display:
+    name: Display — static validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check JS
+        run: |
+          for f in display/player.js display/widgets/renderers.js display/sw.js; do
+            echo "Checking $f..."
+            node --check "$f"
+          done
+      - name: HTML valid
+        run: |
+          node -e "const h = require('fs').readFileSync('display/index.html', 'utf8'); if (!h.includes('<!DOCTYPE html>')) process.exit(1)"
+
+  middleware:
+    name: Middleware — install + lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [rrhh-sync, produccion-adapter, seguridad-feed]
+    defaults:
+      run:
+        working-directory: middleware/${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+      - name: Syntax check
+        run: node --check index.js
+
+  docker:
+    name: Docker — build images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t cartelera-backend:ci backend
+      - name: Build admin image
+        run: docker build -t cartelera-admin:ci admin
+      - name: Build middleware images
+        run: |
+          docker build -t cartelera-mw-rrhh:ci   middleware/rrhh-sync
+          docker build -t cartelera-mw-prod:ci   middleware/produccion-adapter
+          docker build -t cartelera-mw-seg:ci    middleware/seguridad-feed
+
+  validate-configs:
+    name: Validate configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose
+        run: docker compose config -q
+      - name: Validate Caddyfile
+        run: docker run --rm -v "${{ github.workspace }}/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Check shell scripts
+        run: |
+          sudo apt-get install -y shellcheck
+          shellcheck -e SC2034,SC1091 scripts/*.sh || true
+
+  docs:
+    name: Docs — link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify all referenced docs exist
+        run: |
+          ERR=0
+          # Check that every .md link in docs/README.md points to a file that exists
+          for f in $(grep -oE '\[.*\]\(([a-z-]+\.md)\)' docs/README.md | grep -oE '\(([a-z-]+\.md)\)' | tr -d '()'); do
+            if [ ! -f "docs/$f" ]; then
+              echo "Missing doc: docs/$f"
+              ERR=1
+            fi
+          done
+          exit $ERR
