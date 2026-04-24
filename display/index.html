@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Cartelera Planta — Display</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext x='0' y='14' font-size='14'%3E📺%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Pairing screen (shown when no token yet) -->
+  <div id="pairing" class="pairing-screen hidden">
+    <div class="pairing-inner">
+      <div class="pairing-logo">📺</div>
+      <h1>Cartelera Planta</h1>
+      <p class="pairing-hint">Ingresá el código de emparejamiento de 6 caracteres desde el panel de administración:</p>
+      <input id="pairing-code" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" />
+      <button id="pairing-submit">Emparejar</button>
+      <p id="pairing-error" class="pairing-error hidden"></p>
+      <p class="pairing-footer">
+        <span id="server-status" class="status-indicator"></span>
+        <span id="server-host"></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Player viewport -->
+  <div id="player" class="player hidden">
+    <div id="regions"></div>
+    <div id="alerts-layer" class="alerts-layer"></div>
+    <div id="status-bar" class="status-bar">
+      <span id="connection-dot" class="dot"></span>
+      <span id="display-name">—</span>
+      <span id="zone-name">—</span>
+      <span id="clock">--:--</span>
+      <span id="cache-badge" class="badge hidden">OFFLINE</span>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader" class="loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Cargando cartelera...</div>
+  </div>
+
+  <script src="widgets/renderers.js"></script>
+  <script src="player.js"></script>
+</body>
+</html>
