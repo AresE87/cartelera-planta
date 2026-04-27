@@ -4,8 +4,9 @@ import { getDb } from '../db';
 import { authRequired, adminOnly } from '../auth/middleware';
 import { parseBody, emailSchema, passwordSchema, nameSchema, roleSchema, idParamSchema } from '../util/validators';
 import { hashPassword } from '../auth/passwords';
-import { NotFound, Conflict } from '../util/errors';
+import { NotFound, Conflict, BadRequest } from '../util/errors';
 import { logAudit } from '../util/audit';
+import { validatePassword } from '../auth/password-policy';
 
 const router: Router = Router();
 
@@ -38,13 +39,17 @@ router.get('/', (_req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const data = parseBody(createSchema, req.body);
+    const policy = validatePassword(data.password);
+    if (!policy.ok) throw BadRequest(policy.reason ?? 'Weak password');
+
     const db = getDb();
-    const exists = db.prepare('SELECT 1 FROM users WHERE email = ?').get(data.email);
+    const normEmail = data.email.toLowerCase();
+    const exists = db.prepare('SELECT 1 FROM users WHERE email = ?').get(normEmail);
     if (exists) throw Conflict('Email already registered');
     const hash = await hashPassword(data.password);
     const info = db.prepare('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)')
-      .run(data.email, hash, data.name, data.role);
-    logAudit(req, 'user.create', 'user', Number(info.lastInsertRowid), { email: data.email, role: data.role });
+      .run(normEmail, hash, data.name, data.role);
+    logAudit(req, 'user.create', 'user', Number(info.lastInsertRowid), { email: normEmail, role: data.role });
     res.status(201).json({ id: info.lastInsertRowid });
   } catch (err) {
     next(err);
@@ -77,6 +82,8 @@ router.patch('/:id', async (req, res, next) => {
     if (data.role !== undefined) { updates.push('role = ?'); values.push(data.role); }
     if (data.active !== undefined) { updates.push('active = ?'); values.push(data.active ? 1 : 0); }
     if (data.password !== undefined) {
+      const policy = validatePassword(data.password);
+      if (!policy.ok) throw BadRequest(policy.reason ?? 'Weak password');
       updates.push('password_hash = ?');
       values.push(await hashPassword(data.password));
     }

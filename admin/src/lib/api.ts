@@ -39,6 +39,11 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ token: string; user: User }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me:    () => request<{ user: User }>('/api/auth/me'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 
   // users
   listUsers:   () => request<{ users: User[] }>('/api/users'),

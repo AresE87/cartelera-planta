@@ -28,9 +28,9 @@ Implementación completa del plan descrito en [plan.md](plan.md).
 | Widgets built-in | 12 (beneficios, cumpleaños, avisos, KPIs, alertas, clima, reloj, RSS, texto, imagen URL, YouTube, iframe) |
 | Roles de usuario | 6 (admin, comunicaciones, rrhh, producción, seguridad, operator) |
 | Páginas admin UI | 13 |
-| Documentos | 10 (en `docs/`) |
+| Documentos | 11 (en `docs/`) |
 | Scripts ops | 8 (install, backup, restore, player-setup, health, smoke, validate, seed) |
-| Tests automatizados | 60 (auth, widgets, scheduler, pairing, SSRF, rate-limit, JWT, passwords) |
+| Tests automatizados | 84 (auth, widgets, scheduler, pairing, SSRF, rate-limit, JWT, passwords, media, alertas, schedules) |
 | CI jobs | 7 |
 
 ## Tecnologías
@@ -68,7 +68,7 @@ sudo reboot
 - HA / clustering (single-node design, intencional)
 - Video streaming (HLS/RTSP)
 - Touchscreen / interactividad
-- Métricas Prometheus (listed en docs/operations.md como extensión)
+- Dashboards/alerting Prometheus listos para operacion
 
 ## Hardening (v1.1)
 
@@ -79,6 +79,15 @@ sudo reboot
 - Pairing codes con CSPRNG (`crypto.randomInt`)
 - `api_token` ya no se filtra por API
 - `NODE_ENV=production` bloquea arranque con JWT_SECRET débil
+
+## Hardening y demo (v1.2)
+
+- HTTP del player valida tokens contra `displays.api_token`; re-emparejar revoca tokens viejos tambien para REST.
+- Media HTML/SVG bloqueada en upload y al servir archivos legacy.
+- Alertas y schedules validan destinos existentes y consistentes.
+- CI deja de tolerar tests fallidos.
+- Admin mas intuitivo para demo y operacion diaria.
+- Soporte de demo local en TV moderna (`/display/`) y TV legacy (`/display/tv.html`).
 
 Ver [docs/changelog.md](docs/changelog.md) para el detalle.
 

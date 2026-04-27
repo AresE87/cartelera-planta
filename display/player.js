@@ -286,11 +286,20 @@
   }
 
   async function renderMedia(el, mediaId) {
-    const url = `${state.serverBase}/api/media/file/${mediaId}`;
-    // We don't have /api/media/file/:id — media route uses /media/file/:filename
-    // So we need to look up filename from config's embedded media map if present.
-    // For simplicity, assume layout editor stores URLs too. Fall back:
-    el.innerHTML = `<img class="region-media-img" src="${escapeHtml(state.serverBase + '/api/media/' + mediaId + '/raw')}" onerror="this.style.display='none'"/>`;
+    const url = `${state.serverBase}/api/media/${mediaId}/file`;
+    try {
+      const head = await fetch(url, { method: 'HEAD' });
+      const mime = head.headers.get('content-type') || '';
+      if (mime.startsWith('video/')) {
+        el.innerHTML = `<video class="region-media-video" src="${escapeHtml(url)}" autoplay muted loop playsinline></video>`;
+      } else if (mime.startsWith('audio/')) {
+        el.innerHTML = `<audio src="${escapeHtml(url)}" autoplay></audio><div class="widget widget-texto"><div>Reproduciendo audio</div></div>`;
+      } else {
+        el.innerHTML = `<img class="region-media-img" src="${escapeHtml(url)}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;widget widget-error&quot;>Media ${mediaId} no disponible</div>'"/>`;
+      }
+    } catch {
+      el.innerHTML = `<img class="region-media-img" src="${escapeHtml(url)}" alt="" onerror="this.style.display='none'"/>`;
+    }
   }
 
   async function renderWidget(el, widgetId) {

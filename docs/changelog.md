@@ -3,6 +3,31 @@
 Todos los cambios importantes del proyecto se documentan acá.
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.2.0] - 2026-04-27
+
+### Security
+- Display HTTP auth ahora valida que el JWT coincida con `displays.api_token`. Re-emparejar una pantalla revoca el token viejo tanto en HTTP como en WebSocket.
+- Upload de media bloquea `text/html` e `image/svg+xml`; archivos legacy de esos tipos responden `415` al intentar servirlos.
+- Alertas validan `target_type` + `target_id`: `all` no acepta destino, `zone` exige zona existente y `display` exige pantalla existente.
+- Schedules validan exactamente un destino (`zone_id` o `display_id`) y normalizan cambios por PATCH para evitar horarios ambiguos o sin destino.
+- Login y administracion de usuarios incorporan politicas de password y lockout temporal ante fuerza bruta.
+
+### Changed
+- CI vuelve bloqueantes los tests de backend y `shellcheck`; backend/admin usan `npm ci --no-audit --no-fund`.
+- El redirect de `/` es configurable con `ROOT_REDIRECT`; para demos puede apuntar directo al player.
+- Admin redisenado para operacion diaria: navegacion agrupada, dashboard con estado operativo, pantallas mas claras, presets de layout y media upload mas guiado.
+- El player consume media segura via `/api/media/:id/file`.
+
+### Added
+- Player legacy `display/player-legacy.js` para navegadores sin soporte de modulos.
+- Pagina ultra-legacy `display/tv.html` para TVs muy antiguas.
+- Runbook de demo local/TV en [demo-tv-setup.md](demo-tv-setup.md).
+- Tests dedicados para media, alertas, schedules y revocacion HTTP de tokens de display.
+
+### Tests
+- Suite backend actualizada a 84 tests.
+- Validaciones locales ejecutadas: backend typecheck, backend tests, admin build y syntax check de players.
+
 ## [1.1.0] — 2026-04-24
 
 ### Security

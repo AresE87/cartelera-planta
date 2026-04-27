@@ -48,9 +48,9 @@
     reverse_proxy admin:80
   }
 
-  # --- Redirect root to admin ---
+  # --- Redirect root to display for TV demo ---
   handle / {
-    redir /admin/ 302
+    redir /display/ 302
   }
 
   # --- Logs ---

@@ -44,6 +44,7 @@ export const config = {
   },
 
   publicUrl: env('PUBLIC_URL', 'http://localhost:3000'),
+  rootRedirect: env('ROOT_REDIRECT', '/admin'),
   corsOrigin: env('CORS_ORIGIN', '*'),
   logLevel: env('LOG_LEVEL', 'info'),
 };

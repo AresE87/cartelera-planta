@@ -172,20 +172,28 @@
   renderers.reloj = function (el, payload) {
     const cfg = payload?.data || {};
     const tz = cfg.tz || 'America/Argentina/Buenos_Aires';
-    const now = new Date();
-    const time = now.toLocaleTimeString('es-AR', {
-      hour: '2-digit', minute: '2-digit',
-      hour12: cfg.formato === '12h',
-      timeZone: tz,
-    });
-    const date = cfg.mostrarFecha
-      ? now.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })
-      : '';
-    el.className = 'widget widget-reloj';
-    el.innerHTML = `
-      <div class="time">${escapeHtml(time)}</div>
-      ${date ? `<div class="date">${escapeHtml(date)}</div>` : ''}
-    `;
+    const render = () => {
+      const now = new Date();
+      const time = now.toLocaleTimeString('es-AR', {
+        hour: '2-digit', minute: '2-digit',
+        hour12: cfg.formato === '12h',
+        timeZone: tz,
+      });
+      const date = cfg.mostrarFecha
+        ? now.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })
+        : '';
+      el.className = 'widget widget-reloj';
+      el.innerHTML = `
+        <div class="time">${escapeHtml(time)}</div>
+        ${date ? `<div class="date">${escapeHtml(date)}</div>` : ''}
+      `;
+    };
+    render();
+    if (el._clockTimer) clearInterval(el._clockTimer);
+    el._clockTimer = setInterval(() => {
+      if (!document.body.contains(el)) { clearInterval(el._clockTimer); return; }
+      render();
+    }, 30_000);
   };
 
   // ----- texto -----

@@ -12,6 +12,7 @@ import { hashPassword } from '../src/auth/passwords';
 import { signUserToken } from '../src/auth/jwt';
 import { getDb } from '../src/db';
 import { _resetRateLimitForTests } from '../src/util/rate-limit';
+import { _resetLockoutsForTests } from '../src/auth/lockout';
 import type { Role } from '../src/types';
 
 export interface TestServer {
@@ -112,6 +113,10 @@ export async function http_(
 
 export function resetRateLimits(): void {
   _resetRateLimitForTests();
+}
+
+export function resetAuthLockouts(): void {
+  _resetLockoutsForTests();
 }
 
 export { getDb };

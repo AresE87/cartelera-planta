@@ -35,7 +35,7 @@
     @apply block text-sm font-medium text-slate-700 mb-1;
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6;
+    @apply bg-white rounded-lg shadow-sm border border-slate-200 p-6;
   }
   .badge {
     @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
@@ -64,7 +64,7 @@
   }
 
   .nav-link {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors;
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors;
   }
   .nav-link.active {
     @apply bg-brand-600 text-white;

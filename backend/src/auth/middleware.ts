@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { verifyToken } from './jwt';
 import { Unauthorized, Forbidden } from '../util/errors';
 import type { JwtPayload, Role } from '../types';
+import { getDb } from '../db';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -40,6 +41,12 @@ export function displayAuthRequired(req: Request, _res: Response, next: NextFunc
   try {
     const payload = verifyToken(token);
     if (payload.type !== 'display') return next(Unauthorized('Display token required'));
+    const display = getDb()
+      .prepare('SELECT api_token FROM displays WHERE id = ?')
+      .get(payload.sub) as { api_token: string | null } | undefined;
+    if (!display || !display.api_token || display.api_token !== token) {
+      return next(Unauthorized('Invalid display token'));
+    }
     req.displayId = payload.sub;
     next();
   } catch {

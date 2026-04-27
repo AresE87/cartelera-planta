@@ -5,7 +5,8 @@ import { authRequired, roleRequired } from '../auth/middleware';
 import { parseBody, idParamSchema } from '../util/validators';
 import { logAudit } from '../util/audit';
 import { broadcast } from '../ws/server';
-import { NotFound } from '../util/errors';
+import { BadRequest, NotFound } from '../util/errors';
+import { queryBool } from '../util/query';
 
 const router: Router = Router();
 
@@ -21,12 +22,36 @@ const writeSchema = z.object({
   play_sound: z.boolean().optional(),
 });
 
+type AlertTargetType = z.infer<typeof writeSchema>['target_type'];
+
+function validateAlertTarget(
+  db: ReturnType<typeof getDb>,
+  targetType: AlertTargetType,
+  targetId: number | null | undefined,
+): number | null {
+  if (targetType === 'all') {
+    if (targetId !== null && targetId !== undefined) {
+      throw BadRequest('target_id must be empty when target_type is all');
+    }
+    return null;
+  }
+
+  if (targetId === null || targetId === undefined) {
+    throw BadRequest(`target_id is required when target_type is ${targetType}`);
+  }
+
+  const table = targetType === 'zone' ? 'zones' : 'displays';
+  const exists = db.prepare(`SELECT id FROM ${table} WHERE id = ?`).get(targetId);
+  if (!exists) throw BadRequest(`${targetType} not found`);
+  return targetId;
+}
+
 router.use(authRequired);
 
 router.get('/', (req, res, next) => {
   try {
     const query = z.object({
-      active: z.coerce.boolean().optional(),
+      active: queryBool.optional(),
     }).parse(req.query);
     const db = getDb();
     let sql = `
@@ -49,6 +74,7 @@ router.post('/', roleRequired('admin', 'comunicaciones', 'seguridad'), (req, res
   try {
     const data = parseBody(writeSchema, req.body);
     const db = getDb();
+    const targetId = validateAlertTarget(db, data.target_type, data.target_id);
 
     const endsAt = data.duration_seconds
       ? new Date(Date.now() + data.duration_seconds * 1000).toISOString()
@@ -63,7 +89,7 @@ router.post('/', roleRequired('admin', 'comunicaciones', 'seguridad'), (req, res
       data.body ?? null,
       data.severity,
       data.target_type,
-      data.target_id ?? null,
+      targetId,
       data.icon ?? null,
       data.color ?? null,
       data.duration_seconds ?? null,
@@ -74,15 +100,15 @@ router.post('/', roleRequired('admin', 'comunicaciones', 'seguridad'), (req, res
 
     const id = Number(info.lastInsertRowid);
     const alert = db.prepare('SELECT * FROM alerts WHERE id = ?').get(id);
-    logAudit(req, 'alert.create', 'alert', id, { severity: data.severity, target: data.target_type });
+    logAudit(req, 'alert.create', 'alert', id, { severity: data.severity, target: data.target_type, target_id: targetId });
 
     // Broadcast push
     if (data.target_type === 'all') {
       broadcast({ channel: 'all', event: { type: 'alert', alert } });
     } else if (data.target_type === 'zone') {
-      broadcast({ channel: `zone:${data.target_id}`, event: { type: 'alert', alert } });
+      broadcast({ channel: `zone:${targetId}`, event: { type: 'alert', alert } });
     } else if (data.target_type === 'display') {
-      broadcast({ channel: `display:${data.target_id}`, event: { type: 'alert', alert } });
+      broadcast({ channel: `display:${targetId}`, event: { type: 'alert', alert } });
     }
 
     res.status(201).json({ id, alert });

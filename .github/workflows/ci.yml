@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install deps
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
       - name: Build
@@ -29,7 +29,6 @@ jobs:
         env:
           JWT_SECRET: test-secret-test-secret-test-secret-test
           DB_PATH: ':memory:'
-        continue-on-error: true
 
   admin:
     name: Admin — typecheck + build
@@ -43,7 +42,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install deps
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
       - name: Build
@@ -112,7 +111,7 @@ jobs:
       - name: Check shell scripts
         run: |
           sudo apt-get install -y shellcheck
-          shellcheck -e SC2034,SC1091 scripts/*.sh || true
+          shellcheck -e SC2034,SC1091 scripts/*.sh
 
   docs:
     name: Docs — link check

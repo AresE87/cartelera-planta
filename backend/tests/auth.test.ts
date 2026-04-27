@@ -1,10 +1,10 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { getApp, http_, resetRateLimits, tokenForRole } from './_helpers';
+import { getApp, http_, resetAuthLockouts, resetRateLimits, tokenForRole } from './_helpers';
 
 describe('auth', () => {
-  before(async () => { await getApp(); resetRateLimits(); });
-  after(() => { resetRateLimits(); });
+  before(async () => { await getApp(); resetRateLimits(); resetAuthLockouts(); });
+  after(() => { resetRateLimits(); resetAuthLockouts(); });
 
   it('logs in with valid credentials', async () => {
     const r = await http_('POST', '/api/auth/login', {
@@ -53,8 +53,28 @@ describe('auth', () => {
     assert.equal(r.status, 401);
   });
 
+  it('lets an authenticated user change their own password', async () => {
+    const token = await tokenForRole('operator');
+    const r = await http_('POST', '/api/auth/change-password', {
+      token,
+      body: { currentPassword: 'passwordtest12345', newPassword: 'betterpass12345' },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.ok, true);
+  });
+
+  it('rejects weak replacement passwords', async () => {
+    const token = await tokenForRole('operator');
+    const r = await http_('POST', '/api/auth/change-password', {
+      token,
+      body: { currentPassword: 'passwordtest12345', newPassword: 'admin1234' },
+    });
+    assert.equal(r.status, 400);
+  });
+
   it('rate-limits brute-force login attempts', async () => {
     resetRateLimits();
+    resetAuthLockouts();
     let blocked = false;
     for (let i = 0; i < 8; i++) {
       const r = await http_('POST', '/api/auth/login', {
@@ -63,5 +83,23 @@ describe('auth', () => {
       if (r.status === 429) { blocked = true; break; }
     }
     assert.equal(blocked, true, 'expected at least one request to be rate-limited');
+  });
+
+  it('locks the account across rotating IPs', async () => {
+    resetRateLimits();
+    resetAuthLockouts();
+    for (let i = 0; i < 5; i++) {
+      const r = await http_('POST', '/api/auth/login', {
+        headers: { 'x-forwarded-for': `10.0.0.${i + 1}` },
+        body: { email: 'admin@test.local', password: 'wrong-attempt' },
+      });
+      assert.equal(r.status, 401);
+    }
+    const locked = await http_('POST', '/api/auth/login', {
+      headers: { 'x-forwarded-for': '10.0.0.99' },
+      body: { email: 'admin@test.local', password: 'testpassword123' },
+    });
+    assert.equal(locked.status, 429);
+    assert.equal(locked.json.code, 'account_locked');
   });
 });

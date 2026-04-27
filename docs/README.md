@@ -11,5 +11,6 @@
 | [api-reference.md](api-reference.md) | Integradores | Endpoints REST + WebSocket para custom integrations |
 | [widget-development.md](widget-development.md) | Devs | Cómo crear nuevos widgets custom |
 | [operations.md](operations.md) | TI / SRE | Backups, monitoreo, troubleshooting, actualizaciones |
+| [demo-tv-setup.md](demo-tv-setup.md) | TI / Demo | Configuracion local para probar la cartelera en TVs modernas y legacy |
 | [security.md](security.md) | Seguridad / TI | Modelo de seguridad, hardening, incidentes |
 | [changelog.md](changelog.md) | Todos | Historial de cambios |

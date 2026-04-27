@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -7,7 +8,7 @@ import { getDb } from '../db';
 import { config } from '../config';
 import { authRequired, roleRequired } from '../auth/middleware';
 import { parseBody, idParamSchema } from '../util/validators';
-import { NotFound, BadRequest } from '../util/errors';
+import { NotFound, BadRequest, HttpError, UnsupportedMediaType } from '../util/errors';
 import { logAudit } from '../util/audit';
 
 const router: Router = Router();
@@ -23,10 +24,9 @@ const storage = multer.diskStorage({
 });
 
 const ALLOWED_MIME = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
   'video/mp4', 'video/webm',
   'audio/mpeg', 'audio/ogg',
-  'text/html',
 ];
 
 const upload = multer({
@@ -40,13 +40,46 @@ const upload = multer({
   },
 });
 
-function typeFromMime(mime: string): 'image' | 'video' | 'audio' | 'html' {
+function uploadSingleFile(req: Request, res: Response, next: NextFunction) {
+  upload.single('file')(req, res, err => {
+    if (!err) return next();
+    if (err instanceof HttpError) return next(err);
+    return next(BadRequest(err instanceof Error ? err.message : String(err)));
+  });
+}
+
+function typeFromMime(mime: string): 'image' | 'video' | 'audio' {
   if (mime.startsWith('image/')) return 'image';
   if (mime.startsWith('video/')) return 'video';
   if (mime.startsWith('audio/')) return 'audio';
-  if (mime === 'text/html') return 'html';
-  return 'image';
+  throw BadRequest(`Unsupported mime: ${mime}`);
 }
+
+// Public endpoint: players store media by id in layout definitions, while the
+// canonical file URL uses an opaque filename. Resolve the id here without
+// exposing write/delete operations.
+router.get('/:id/file', (req, res, next) => {
+  try {
+    const { id } = parseBody(idParamSchema, req.params);
+    const db = getDb();
+    const media = db.prepare('SELECT filename, mime_type FROM media WHERE id = ?')
+      .get(id) as { filename: string; mime_type: string } | undefined;
+    if (!media) throw NotFound();
+    if (media.mime_type === 'text/html' || media.mime_type === 'image/svg+xml') {
+      throw UnsupportedMediaType();
+    }
+
+    if (media.filename.includes('..') || media.filename.includes('/') || media.filename.includes('\\')) {
+      throw NotFound();
+    }
+
+    const abs = path.join(config.uploads.dir, media.filename);
+    if (!fs.existsSync(abs)) throw NotFound();
+    res.setHeader('Content-Type', media.mime_type);
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    fs.createReadStream(abs).pipe(res);
+  } catch (err) { next(err); }
+});
 
 router.use(authRequired);
 
@@ -60,7 +93,7 @@ router.get('/', (_req, res, next) => {
 
 router.post('/upload',
   roleRequired('admin', 'comunicaciones', 'rrhh', 'produccion', 'seguridad'),
-  upload.single('file'),
+  uploadSingleFile,
   (req, res, next) => {
     try {
       if (!req.file) throw BadRequest('No file received');

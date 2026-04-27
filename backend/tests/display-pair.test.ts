@@ -48,6 +48,8 @@ describe('display pairing flow', () => {
     const id = create.json.id;
     const pair1 = await http_('POST', '/api/player/pair', { body: { code: create.json.pairing_code } });
     assert.equal(pair1.status, 200);
+    const config1 = await http_('GET', '/api/player/config', { token: pair1.json.token });
+    assert.equal(config1.status, 200);
 
     const regen = await http_('POST', `/api/displays/${id}/regenerate-pairing`, {
       token: adminToken,
@@ -57,6 +59,27 @@ describe('display pairing flow', () => {
 
     const row = getDb().prepare('SELECT api_token FROM displays WHERE id = ?').get(id) as { api_token: string | null };
     assert.equal(row.api_token, null);
+
+    const staleConfig = await http_('GET', '/api/player/config', { token: pair1.json.token });
+    assert.equal(staleConfig.status, 401);
+    const staleHeartbeat = await http_('POST', '/api/player/heartbeat', {
+      token: pair1.json.token,
+      body: { version: 'test' },
+    });
+    assert.equal(staleHeartbeat.status, 401);
+    const staleWidget = await http_('GET', '/api/player/widget/1/data', { token: pair1.json.token });
+    assert.equal(staleWidget.status, 401);
+
+    const pair2 = await http_('POST', '/api/player/pair', { body: { code: regen.json.pairing_code } });
+    assert.equal(pair2.status, 200);
+    const config2 = await http_('GET', '/api/player/config', { token: pair2.json.token });
+    assert.equal(config2.status, 200);
+  });
+
+  it('rejects a validly signed display token for a display that does not exist', async () => {
+    const { signDisplayToken } = await import('../src/auth/jwt');
+    const r = await http_('GET', '/api/player/config', { token: signDisplayToken(999999) });
+    assert.equal(r.status, 401);
   });
 
   it('does not leak api_token through admin display list', async () => {

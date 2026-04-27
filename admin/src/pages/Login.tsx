@@ -4,8 +4,8 @@ import { api, setToken, User } from '../lib/api';
 interface Props { onLogin: (u: User) => void }
 
 export default function Login({ onLogin }: Props) {
-  const [email, setEmail] = useState('admin@cartelera.local');
-  const [password, setPassword] = useState('admin1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

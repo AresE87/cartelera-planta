@@ -103,7 +103,7 @@ Lo ideal es automatizarlo con un cron diario dentro del container.
 Integrá con lo que uses:
 
 - **Uptime Kuma** / StatusCake: HTTP check a `/api/health` cada 1-5 min.
-- **Prometheus:** agregá un endpoint `/metrics` (pendiente de v2) o usá node_exporter para host stats.
+- **Prometheus:** el backend expone `/metrics` para metricas basicas; complementalo con node_exporter para host stats y dashboard/alerting.
 - **Sentry:** para capturar excepciones del backend, añadir `@sentry/node` en `src/index.ts`.
 
 Alertas razonables:

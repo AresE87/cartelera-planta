@@ -26,7 +26,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   const isApi = url.pathname.startsWith('/api/');
-  const isMedia = url.pathname.startsWith('/media/file/');
+  const isMedia = url.pathname.startsWith('/media/file/') || /^\/api\/media\/\d+\/file$/.test(url.pathname);
 
   if (isMedia) {
     // Cache-first for media (images/videos rarely change)
